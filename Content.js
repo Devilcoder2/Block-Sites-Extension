@@ -1,15 +1,3 @@
-// switch (window.location.hostname) {
-//   case "www.youtube.com":
-//     alert("this is youtube");
-//     break;
-//   case "www.facebook.com":
-//     alert("this is facebook");
-//     break;
-//   case "www.google.com":
-//     alert("this is google");
-//     break;
-// }
-
 const generateSTYLES = () => {
   return `<style>@import url(https://fonts.googleapis.com/css?family=opensans:500);
     body {
@@ -55,14 +43,12 @@ const generateSTYLES = () => {
       position: relative;
       display: inline-block;
       margin: 19px 0px 0px 0px;
-      /* top: 256.301px; */
       z-index: 3;
       width: 100%;
       line-height: 1.2em;
       display: inline-block;
     }
     
-   
     .right {
       float: right;
       width: 60%;
@@ -264,21 +250,38 @@ const generateHTML = (pageName) => {
      `;
 };
 
-const blockedSites = [
-  "www.facebook.com",
-  "https://www.youtube.com/results?search_query=what+is+bearer+token+in+jwt",
-];
-let isBlockedhost = false;
+const checkAndBlockSite = (blockedSites) => {
+  let isBlockedhost = false;
 
-if (blockedSites.includes(window.location.hostname)) {
-  document.head.innerHTML = generateSTYLES();
-  document.body.innerHTML = generateHTML("YOUTUBE");
-  isBlockedhost = true;
-}
-
-if (!isBlockedhost) {
-  if (blockedSites.includes(window.location.href)) {
+  if (blockedSites.includes(window.location.hostname)) {
     document.head.innerHTML = generateSTYLES();
-    document.body.innerHTML = generateHTML("YOUTUBE");
+    document.body.innerHTML = generateHTML("BLOCKED SITE");
+    isBlockedhost = true;
   }
-}
+
+  if (!isBlockedhost) {
+    if (blockedSites.includes(window.location.href)) {
+      document.head.innerHTML = generateSTYLES();
+      document.body.innerHTML = generateHTML("BLOCKED SITE");
+    }
+  }
+};
+
+chrome.storage.local.get({ blockedSites: [] }, (result) => {
+  checkAndBlockSite(result.blockedSites);
+});
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "blockSite") {
+    const newUrl = request.url;
+    chrome.storage.local.get({ blockedSites: [] }, (result) => {
+      const blockedSites = result.blockedSites;
+      if (!blockedSites.includes(newUrl)) {
+        blockedSites.push(newUrl);
+        chrome.storage.local.set({ blockedSites: blockedSites }, () => {
+          checkAndBlockSite(blockedSites);
+        });
+      }
+    });
+  }
+});
