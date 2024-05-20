@@ -250,21 +250,37 @@ const generateHTML = (pageName) => {
      `;
 };
 
+const isTimeInRange = (startTime, endTime) => {
+  const current = new Date();
+  const currentTime = current.getHours() * 60 + current.getMinutes();
+  const [startHour, startMinute] = startTime.split(":").map(Number);
+  const [endHour, endMinute] = endTime.split(":").map(Number);
+  const startTimeMinutes = startHour * 60 + startMinute;
+  const endTimeMinutes = endHour * 60 + endMinute;
+
+  if (startTimeMinutes <= endTimeMinutes) {
+    return currentTime >= startTimeMinutes && currentTime <= endTimeMinutes;
+  } else {
+    return currentTime >= startTimeMinutes || currentTime <= endTimeMinutes;
+  }
+};
+
 const checkAndBlockSite = (blockedSites) => {
-  let isBlockedhost = false;
+  const currentHostname = window.location.hostname;
+  const currentURL = window.location.href;
+  const currentHour = new Date().getHours();
+  const currentMinute = new Date().getMinutes();
 
-  if (blockedSites.includes(window.location.hostname)) {
-    document.head.innerHTML = generateSTYLES();
-    document.body.innerHTML = generateHTML("BLOCKED SITE");
-    isBlockedhost = true;
-  }
-
-  if (!isBlockedhost) {
-    if (blockedSites.includes(window.location.href)) {
-      document.head.innerHTML = generateSTYLES();
-      document.body.innerHTML = generateHTML("BLOCKED SITE");
+  blockedSites.forEach((site) => {
+    if (site.url === currentHostname || site.url === currentURL) {
+      if (
+        isTimeInRange(site.startTime, site.endTime, currentHour, currentMinute)
+      ) {
+        document.head.innerHTML = generateSTYLES();
+        document.body.innerHTML = generateHTML();
+      }
     }
-  }
+  });
 };
 
 chrome.storage.local.get({ blockedSites: [] }, (result) => {
@@ -273,11 +289,14 @@ chrome.storage.local.get({ blockedSites: [] }, (result) => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "blockSite") {
-    const newUrl = request.url;
     chrome.storage.local.get({ blockedSites: [] }, (result) => {
       const blockedSites = result.blockedSites;
-      if (!blockedSites.includes(newUrl)) {
-        blockedSites.push(newUrl);
+      if (!blockedSites.some((site) => site.url === request.url)) {
+        blockedSites.push({
+          url: request.url,
+          startTime: request.startTime,
+          endTime: request.endTime,
+        });
         chrome.storage.local.set({ blockedSites: blockedSites }, () => {
           checkAndBlockSite(blockedSites);
         });
