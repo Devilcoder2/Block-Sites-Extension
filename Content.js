@@ -265,6 +265,13 @@ const isTimeInRange = (startTime, endTime) => {
   }
 };
 
+const isBlockedForCurrentDay = (days) => {
+  const current = new Date();
+  const currentDay = current.getDay();
+  const daysMapping = [6, 0, 1, 2, 3, 4, 5];
+
+  return days[daysMapping[currentDay]];
+};
 const checkAndBlockSite = (blockedSites) => {
   const currentHostname = window.location.hostname;
   const currentURL = window.location.href;
@@ -274,7 +281,13 @@ const checkAndBlockSite = (blockedSites) => {
   blockedSites.forEach((site) => {
     if (site.url === currentHostname || site.url === currentURL) {
       if (
-        isTimeInRange(site.startTime, site.endTime, currentHour, currentMinute)
+        isTimeInRange(
+          site.startTime,
+          site.endTime,
+          currentHour,
+          currentMinute
+        ) &&
+        isBlockedForCurrentDay(site.days)
       ) {
         document.head.innerHTML = generateSTYLES();
         document.body.innerHTML = generateHTML();
@@ -296,6 +309,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           url: request.url,
           startTime: request.startTime,
           endTime: request.endTime,
+          days: request.days,
         });
         chrome.storage.local.set({ blockedSites: blockedSites }, () => {
           checkAndBlockSite(blockedSites);
