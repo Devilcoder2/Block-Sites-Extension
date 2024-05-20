@@ -6,10 +6,14 @@ document.getElementById("submitButton").addEventListener("click", () => {
       blockedSites.push(url);
       chrome.storage.local.set({ blockedSites: blockedSites }, () => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            action: "blockSite",
-            url: url,
-          });
+          const currentTabId = tabs[0].id;
+          chrome.tabs.sendMessage(
+            currentTabId,
+            { action: "blockSite", url: url },
+            () => {
+              chrome.tabs.reload(currentTabId);
+            }
+          );
         });
       });
     }
